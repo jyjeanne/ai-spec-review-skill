@@ -19,7 +19,7 @@ This repository is a **skill package**, not a conventional application. Treat th
 - Preserve the skill identity as `ai-spec-review` unless the change is explicitly about renaming or repackaging the skill.
 - Treat `SKILL.md` as authoritative whenever behavior, review dimensions, or output shape change.
 - Keep the structured output aligned with the top-level sections defined in `SKILL.md`: `summary`, `issues`, `risk_register`, the domain review sections, `test_plan`, `tasks`, and `score`.
-- Keep issue metadata aligned with the enums in `SKILL.md`: severity is `low|medium|high|critical`, and category is `spec|business_logic|architecture|performance|security|testing|devops|dependencies|standards|ux|documentation|code_quality|maintainability`.
+- Keep issue metadata aligned with the enums in `SKILL.md`: severity is `low|medium|high|critical`, confidence is `high|medium|low`, and category is `spec|business_logic|architecture|performance|security|testing|devops|dependencies|standards|ux|documentation|code_quality|maintainability`.
 - Keep `score` aligned with the full review surface in `SKILL.md`; if a review dimension is added, update the scoring block in the same change.
 - Security findings should map to the OWASP Top 10 where relevant.
 - Testing guidance is intentionally opinionated: maintain the test-pyramid bias from `references/testing_best_practices.md` and keep risk-based coverage expectations explicit.
