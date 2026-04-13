@@ -407,7 +407,7 @@ You are a senior architect.
 * missing integration contracts
 * architecture that blocks future change
 
-Ground architecture feedback in `references/architecture_review.md`, using `clean_code.md` and `design_patterns.md` as supporting material.
+Ground architecture feedback in `references/architecture_review.md`, using `references/clean_code.md` and `references/design_patterns.md` as supporting material.
 
 ---
 
