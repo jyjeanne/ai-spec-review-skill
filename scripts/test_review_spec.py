@@ -10,15 +10,22 @@ import unittest
 sys.path.insert(0, os.path.dirname(__file__))
 
 from review_spec import (
+    DEVOPS_TERMS,
+    DOCUMENTATION_TERMS,
     LIKELIHOOD_BY_SEVERITY,
     PERFORMANCE_TERMS,
     SECURITY_TERMS,
     SEVERITY_RANK,
     VALID_CATEGORIES,
+    VALID_SEVERITIES,
+    _any_term_present,
+    _normalize_text,
     basic_analysis,
     build_risk_register,
     build_summary,
     create_issue,
+    detect_devops_gaps,
+    detect_documentation_gaps,
     detect_performance_gaps,
     detect_security_gaps,
     detect_testing_gaps,
@@ -44,6 +51,8 @@ RICH_SPEC = (
     "Security: All endpoints require authorization headers.\n"
     "Testing strategy: unit tests, integration tests, and e2e tests.\n"
     "Performance: p99 latency must stay below 200ms under SLA.\n"
+    "DevOps: CI/CD pipeline with automated deployment and health checks.\n"
+    "Documentation: README, API documentation, and runbooks.\n"
     "Edge cases and error handling should be documented.\n"
 ) * 2  # >200 chars, mentions all dimensions
 
@@ -185,10 +194,10 @@ class TestBasicAnalysis(unittest.TestCase):
         issues = basic_analysis(spec)
         self.assertTrue(any("markers" in i["title"].lower() for i in issues))
 
-    def test_detects_xxx(self):
-        spec = "XXX need to revisit this integration layer. " * 10
+    def test_xxx_not_flagged_as_marker(self):
+        spec = "This specification has XXX blockers in the performance section." * 3
         issues = basic_analysis(spec)
-        self.assertTrue(any("markers" in i["title"].lower() for i in issues))
+        self.assertFalse(any("markers" in i["title"].lower() for i in issues))
 
     def test_case_insensitive_markers(self):
         spec = "todo: decide auth mechanism, Fixme: rate limiter. " * 10
@@ -226,15 +235,18 @@ class TestBasicAnalysis(unittest.TestCase):
         issues = [i for i in basic_analysis(spec) if "too short" in i["title"].lower()]
         self.assertEqual(issues, [])
 
-    def test_199_chars_is_flagged(self):
-        spec = "x" * 199
-        issues = [i for i in basic_analysis(spec) if "too short" in i["title"].lower()]
+    def test_under_50_chars_is_flagged(self):
+        issues = basic_analysis("X" * 49)
         self.assertEqual(len(issues), 1)
 
+    def test_50_chars_not_flagged(self):
+        issues = basic_analysis("X" * 50)
+        self.assertEqual(len(issues), 0)
+
     def test_evidence_includes_length(self):
-        spec = "Short."
+        spec = "Short." * 5  # 30 chars, stripped
         issues = [i for i in basic_analysis(spec) if "too short" in i["title"].lower()]
-        self.assertIn(str(len(spec)), issues[0]["evidence"])
+        self.assertIn(str(len(spec.strip())), issues[0]["evidence"])
 
 
 # ===========================================================================
@@ -500,6 +512,116 @@ class TestBuildRiskRegister(unittest.TestCase):
     def test_owner_is_spec_author(self):
         reg = build_risk_register([self._issue()])
         self.assertEqual(reg[0]["owner"], "spec_author")
+
+
+# ===========================================================================
+# detect_devops_gaps
+# ===========================================================================
+
+class TestDetectDevopsGaps(unittest.TestCase):
+
+    def test_no_devops_terms_flagged(self):
+        spec = "Build a simple calculator UI."
+        issues = detect_devops_gaps(spec)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("devops", issues[0]["title"].lower())
+
+    def test_severity_is_medium(self):
+        spec = "Build a simple calculator UI."
+        self.assertEqual(detect_devops_gaps(spec)[0]["severity"], "medium")
+
+    def test_category_is_devops(self):
+        spec = "Build a simple calculator UI."
+        self.assertEqual(detect_devops_gaps(spec)[0]["category"], "devops")
+
+    def test_each_devops_term_satisfies(self):
+        for term in DEVOPS_TERMS:
+            spec = f"The system requires {term} support."
+            issues = detect_devops_gaps(spec)
+            self.assertEqual(issues, [], f"Term '{term}' should suppress the devops gap")
+
+    def test_case_insensitive(self):
+        spec = "All services use KUBERNETES and DOCKER."
+        self.assertEqual(detect_devops_gaps(spec), [])
+
+
+# ===========================================================================
+# detect_documentation_gaps
+# ===========================================================================
+
+class TestDetectDocumentationGaps(unittest.TestCase):
+
+    def test_no_documentation_terms_flagged(self):
+        spec = "Build a simple calculator UI."
+        issues = detect_documentation_gaps(spec)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("documentation", issues[0]["title"].lower())
+
+    def test_severity_is_low(self):
+        spec = "Build a simple calculator UI."
+        self.assertEqual(detect_documentation_gaps(spec)[0]["severity"], "low")
+
+    def test_category_is_documentation(self):
+        spec = "Build a simple calculator UI."
+        self.assertEqual(detect_documentation_gaps(spec)[0]["category"], "documentation")
+
+    def test_each_documentation_term_satisfies(self):
+        for term in DOCUMENTATION_TERMS:
+            spec = f"The system includes {term}."
+            issues = detect_documentation_gaps(spec)
+            self.assertEqual(issues, [], f"Term '{term}' should suppress the documentation gap")
+
+    def test_case_insensitive(self):
+        spec = "Write a README with API DOCUMENTATION."
+        self.assertEqual(detect_documentation_gaps(spec), [])
+
+
+# ===========================================================================
+# word-boundary and normalization helpers
+# ===========================================================================
+
+class TestTermMatching(unittest.TestCase):
+
+    def test_normalize_underscores(self):
+        self.assertEqual(_normalize_text("access_control"), "access control")
+        self.assertEqual(_normalize_text("response-time"), "response time")
+        self.assertEqual(_normalize_text("SQL-injection"), "sql injection")
+
+    def test_sla_not_matched_in_translate(self):
+        self.assertFalse(_any_term_present("Let me translate that", PERFORMANCE_TERMS))
+
+    def test_slo_not_matched_in_slowly(self):
+        self.assertFalse(_any_term_present("moving slowly through the pipeline", PERFORMANCE_TERMS))
+
+    def test_standalone_sla_slo_matched(self):
+        self.assertTrue(_any_term_present("define sla and slo targets", PERFORMANCE_TERMS))
+
+    def test_underscored_term_matched(self):
+        self.assertTrue(_any_term_present("our sla_target is 99.9%", PERFORMANCE_TERMS))
+
+    def test_multi_word_term_normalized(self):
+        self.assertTrue(_any_term_present("implement access_control rules", SECURITY_TERMS))
+
+    def test_sql_injection_normalized(self):
+        self.assertTrue(_any_term_present("prevent sql-injection attacks", SECURITY_TERMS))
+
+    def test_load_test_normalized(self):
+        self.assertTrue(_any_term_present("run load_test with 1000 RPS", PERFORMANCE_TERMS))
+
+
+# ===========================================================================
+# create_issue severity validation
+# ===========================================================================
+
+class TestCreateIssueValidation(unittest.TestCase):
+
+    def test_invalid_severity_raises(self):
+        with self.assertRaises(ValueError):
+            create_issue("title", "urgent", "spec", "", "", "", "")
+
+    def test_invalid_category_raises(self):
+        with self.assertRaises(ValueError):
+            create_issue("title", "high", "invalid_category", "", "", "", "")
 
 
 # ===========================================================================

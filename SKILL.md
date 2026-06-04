@@ -2,7 +2,7 @@
 
 name: ai-spec-review
 description: Review a markdown specification across business logic, architecture, performance, security, testing, DevOps/CI/CD, dependencies, standards, UX, documentation, code quality, and maintainability. Generates a structured review, risk register, test plan, implementation tasks, and dimension scores (0–10).
-version: 2.1.0
+version: 2.2.0
 author: senior-dev-ai
 tags:
   - code-review
@@ -28,16 +28,16 @@ This skill reviews a Markdown specification and produces a **senior-level engine
 
 * Specification quality review
 * Business logic review
-* Architecture review
-* Performance and scalability review
-* Security review (OWASP Top 10 and abuse-case oriented)
+* Architecture and API design review
+* Performance and scalability review (backend, frontend, database)
+* Security review (OWASP Top 10, threat modeling, abuse-case oriented)
 * Testing strategy and test quality review
-* DevOps / CI / CD / operability review
+* DevOps / CI / CD / operability / observability review
 * Dependency and supply-chain review
 * Standards and norms review
 * UX review
 * Documentation review
-* Code quality review
+* Code quality review (clean code, SOLID, design patterns, code metrics)
 * Maintainability and evolvability review
 * Risk-aware implementation tasks and test plan
 
@@ -324,6 +324,7 @@ Before beginning the review, establish context for the specification under revie
 * If a specific focus was requested (e.g., "focus on security and performance"), prioritize those dimensions but still assess all others at a lighter level
 * If the specification is part of a larger system, note the boundaries of what is and is not covered
 * Load language-specific and framework-specific review signals from `references/language_security_patterns.md` based on the identified technology stack
+* Load language-specific code metrics thresholds from `references/code_metrics_reference.md` and supply-chain watchlists from `references/vulnerable_packages_watchlist.md`
 
 ### Constraints
 
@@ -407,7 +408,7 @@ You are a senior architect.
 * missing integration contracts
 * architecture that blocks future change
 
-Ground architecture feedback in `references/architecture_review.md`, using `references/clean_code.md` and `references/design_patterns.md` as supporting material.
+Ground architecture feedback in `references/architecture_review.md`, using `references/clean_code.md`, `references/design_patterns.md`, and `references/api_design_reference.md` as supporting material.
 
 ---
 
@@ -433,7 +434,7 @@ Review the specification for performance risks even if explicit performance requ
 * no strategy for spikes, retries, or backpressure
 * missing SLOs, budgets, or performance acceptance criteria
 
-Ground performance feedback in `references/performance_review.md`.
+Ground performance feedback in `references/performance_review.md`. For frontend-specific performance, use `references/frontend_performance.md`. For database-specific guidance, use `references/database_performance.md`.
 
 ---
 
@@ -490,7 +491,7 @@ Ground secrets management assessment in `references/secret_management_checklist.
 
 Map findings to OWASP categories where relevant.
 
-Ground security feedback in `references/owasp_top10.md`, `references/security_vulnerability_patterns.md`, and `references/language_security_patterns.md` (for stack-specific patterns identified in Step 0).
+Ground security feedback in `references/owasp_top10.md`, `references/security_vulnerability_patterns.md`, `references/language_security_patterns.md` (for stack-specific patterns identified in Step 0), and `references/threat_modeling_guide.md` (for STRIDE, attack trees, and trust boundary analysis).
 
 ---
 
@@ -566,7 +567,7 @@ Review whether the specification can be delivered and operated safely.
 * no observability for critical paths
 * environment-specific behavior without control strategy
 
-Ground DevOps and operability feedback in `references/devops_ci_cd.md`.
+Ground DevOps and operability feedback in `references/devops_ci_cd.md` and `references/observability_reference.md`.
 
 ---
 
@@ -602,7 +603,7 @@ Review external and internal dependencies as design risks.
 * no dependency scanning or audit gate in the CI pipeline
 * missing lockfile integrity verification
 
-Ground dependency feedback in `references/dependency_review.md` and `references/vulnerable_packages_watchlist.md`.
+Ground dependency feedback in `references/dependency_review.md`, `references/dependency_management_guide.md`, and `references/vulnerable_packages_watchlist.md`.
 
 ---
 
@@ -704,7 +705,7 @@ Review how the proposed design will affect implementation quality over time.
 * assumptions that make future evolution expensive
 * areas where a small requirement change would trigger broad rewrites
 
-Ground code-quality and maintainability feedback in `references/code_quality_maintainability.md`, with `references/clean_code.md` as supporting material.
+Ground code-quality and maintainability feedback in `references/code_quality_maintainability.md`, with `references/clean_code.md`, `references/design_patterns.md`, `references/code_metrics_reference.md`, and `references/refactoring_catalog.md` as supporting material.
 
 ---
 

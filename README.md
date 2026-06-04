@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
-[![Skill version](https://img.shields.io/badge/skill-v2.1.0-green.svg)](SKILL.md)
+[![Skill version](https://img.shields.io/badge/skill-v2.2.0-green.svg)](SKILL.md)
 
 ---
 
@@ -21,16 +21,16 @@ It doesn't just summarize — it surfaces ambiguities, contradictions, security 
 | 0 | Scope resolution & context loading | `references/language_security_patterns.md` |
 | 1 | Specification quality | `references/spec_review.md` |
 | 2 | Business logic | `references/business_logic_review.md` |
-| 3 | Architecture | `references/architecture_review.md` |
-| 4 | Performance & scalability | `references/performance_review.md` |
-| 5 | Security (OWASP Top 10) | `references/owasp_top10.md`, `references/security_vulnerability_patterns.md`, `references/secret_management_checklist.md`, `references/language_security_patterns.md` |
+| 3 | Architecture & API design | `references/architecture_review.md`, `references/api_design_reference.md` |
+| 4 | Performance & scalability | `references/performance_review.md`, `references/frontend_performance.md`, `references/database_performance.md` |
+| 5 | Security (OWASP Top 10) | `references/owasp_top10.md`, `references/security_vulnerability_patterns.md`, `references/secret_management_checklist.md`, `references/language_security_patterns.md`, `references/threat_modeling_guide.md` |
 | 6 | Testing strategy & quality | `references/testing_best_practices.md` |
-| 7 | DevOps / CI / CD / operability | `references/devops_ci_cd.md` |
-| 8 | Dependency & supply chain | `references/dependency_review.md`, `references/vulnerable_packages_watchlist.md` |
+| 7 | DevOps / CI / CD | `references/devops_ci_cd.md`, `references/observability_reference.md` |
+| 8 | Dependency & supply chain | `references/dependency_review.md`, `references/dependency_management_guide.md`, `references/vulnerable_packages_watchlist.md` |
 | 9 | Standards & norms | `references/standards_and_norms.md` |
 | 10 | UX | `references/ux_review.md` |
 | 11 | Documentation | `references/documentation_review.md` |
-| 12 | Code quality & maintainability | `references/code_quality_maintainability.md` |
+| 12 | Code quality & maintainability | `references/code_quality_maintainability.md`, `references/clean_code.md`, `references/design_patterns.md`, `references/code_metrics_reference.md`, `references/refactoring_catalog.md` |
 | 13 | Test plan generation | `references/testing_best_practices.md` |
 | 14 | Task breakdown | *(output-focused, no heuristic reference)* |
 | 15 | Self-verification pass | *(cross-cutting quality gate)* |
@@ -53,14 +53,12 @@ score            → 14 dimension scores (0–10) + holistic overall
 
 See [SKILL.md](SKILL.md) for the complete schema and field guidance.
 
-### What's new in v2.1.0
+### What's new in v2.2.0
 
-* **Step 0 — Scope Resolution**: identifies the technology stack and loads project-specific guidelines before the review begins
-* **Confidence ratings**: every issue now carries a `confidence: high|medium|low` field to help engineers prioritize
-* **Deeper security review**: expanded to cover SSRF, BOLA/IDOR, JWT weaknesses, race conditions, secrets management lifecycle, data flow analysis, and rate limiting
-* **Supply-chain awareness**: dependency review now references an ecosystem-specific vulnerable packages watchlist and supply-chain red flags
-* **Step 15 — Self-Verification Pass**: re-examines all findings before final output to filter false positives and ensure severity accuracy
-* **4 new reference files**: `security_vulnerability_patterns.md`, `secret_management_checklist.md`, `vulnerable_packages_watchlist.md`, `language_security_patterns.md`
+* **8 new reference files**: `api_design_reference.md`, `code_metrics_reference.md`, `database_performance.md`, `dependency_management_guide.md`, `frontend_performance.md`, `observability_reference.md`, `refactoring_catalog.md`, `threat_modeling_guide.md`
+* **Deep rewrites** of 6 existing files: `clean_code.md` (SOLID principles with code examples, naming conventions, FP patterns, dependency injection), `design_patterns.md` (6→20+ patterns + 7 anti-patterns + decision guide), `code_quality_maintainability.md` (cyclomatic complexity thresholds, coupling metrics, code churn, 10 code rot signals, linting quality gates), `performance_review.md` (profiling methodology, database-specific guidance, Core Web Vitals, caching patterns, async I/O, serverless cold starts), `documentation_review.md` (5-level maturity model, ADR template, C4 diagrams, docs-as-code CI validation, freshness detection), `standards_and_norms.md` (compliance frameworks: PCI-DSS/HIPAA/GDPR/SOC2, WCAG accessibility, REST/GraphQL/gRPC conventions, SemVer/CalVer, i18n/l10n standards)
+* **Preflight helper expanded**: now detects 6 of 13 categories (spec, testing, security, performance, devops, documentation), up from 4. Expanded security terms (+12), performance terms (+9), and added word-boundary matching to eliminate SLA/SLO false-positives in words like "translate" and "slowly". Severity validation added to `create_issue`.
+* **Bug fixes from code review**: PostgreSQL connection count corrected (200-400 → 100-200), cyclomatic complexity tier mismatch resolved across files, NDepend reclassified from Java to C# tooling, duplicate `ci/cd` term removed, `\bunit\b` false positive fixed (no longer matches "business unit"), multi-word term matching handles newlines/tabs/underscores, deduplication of coupling/churn/complexity content between `code_metrics_reference.md` and `code_quality_maintainability.md`
 
 ## Install
 
@@ -83,7 +81,7 @@ cd ai-spec-review-skill
 python3 scripts/review_spec.py path/to/your-spec.md
 ```
 
-The preflight helper performs lightweight text heuristics (marker detection, testing/security/performance gap analysis) and outputs JSON with `summary`, `risk_register`, and `issues`. It is intentionally narrower than the full AI-driven review.
+The preflight helper performs lightweight text heuristics (marker detection, testing/security/performance/devops/documentation gap analysis) and outputs JSON with `summary`, `risk_register`, and `issues`. It covers 6 of 13 review categories — intentionally narrower than the full AI-driven review.
 
 ## Usage
 
@@ -128,7 +126,7 @@ cd scripts
 python3 -m unittest test_review_spec -v
 ```
 
-82 unit tests cover all helper functions: marker detection, word-boundary matching, gap detectors, verdict logic, risk register construction, and CLI integration.
+103 unit tests cover all helper functions: marker detection, word-boundary matching, gap detectors, verdict logic, risk register construction, and CLI integration.
 
 ## Repository structure
 
@@ -140,25 +138,33 @@ python3 -m unittest test_review_spec -v
 ├── .gitignore
 ├── .github/
 │   └── copilot-instructions.md   # Copilot session guidance
-├── references/                   # Grounding heuristics (18 files)
+├── references/                   # Grounding heuristics (26 files)
 │   ├── spec_review.md
 │   ├── business_logic_review.md
 │   ├── architecture_review.md
+│   ├── api_design_reference.md
 │   ├── performance_review.md
+│   ├── frontend_performance.md
+│   ├── database_performance.md
 │   ├── owasp_top10.md
 │   ├── security_vulnerability_patterns.md
 │   ├── secret_management_checklist.md
 │   ├── language_security_patterns.md
+│   ├── threat_modeling_guide.md
 │   ├── vulnerable_packages_watchlist.md
 │   ├── testing_best_practices.md
 │   ├── devops_ci_cd.md
+│   ├── observability_reference.md
 │   ├── dependency_review.md
+│   ├── dependency_management_guide.md
 │   ├── standards_and_norms.md
 │   ├── ux_review.md
 │   ├── documentation_review.md
 │   ├── code_quality_maintainability.md
+│   ├── code_metrics_reference.md
 │   ├── clean_code.md
-│   └── design_patterns.md
+│   ├── design_patterns.md
+│   └── refactoring_catalog.md
 ├── scripts/
 │   ├── review_spec.py            # Preflight helper
 │   └── test_review_spec.py       # Unit tests (82 tests)

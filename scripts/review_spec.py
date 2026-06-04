@@ -2,6 +2,8 @@ import sys
 import json
 import re
 
+VALID_SEVERITIES = {"low", "medium", "high", "critical"}
+
 SEVERITY_RANK = {
     "low": 0,
     "medium": 1,
@@ -19,11 +21,29 @@ LIKELIHOOD_BY_SEVERITY = {
 SECURITY_TERMS = [
     "security", "authentication", "authorization", "permission",
     "access control", "encrypt", "owasp", "vulnerability", "credential",
+    "authn", "authz", "jwt", "oauth", "openid", "saml",
+    "csrf", "xss", "rbac", "iam", "tls", "ssl", "sql injection",
+    "pki", "hmac", "signing", "token", "rate limit",
 ]
 
 PERFORMANCE_TERMS = [
-    "performance", "latency", "throughput", "sla", "slo",
-    "scalability", "response time",
+    "performance", "latency", "throughput", "scalability",
+    "response time", "p95", "p99", "rps", "tps",
+    "benchmark", "profiling", "load test", "stress test",
+    "capacity", "slo", "sla",
+]
+
+DEVOPS_TERMS = [
+    "ci/cd", "deployment", "rollback", "monitoring",
+    "observability", "logging", "alerting", "pipeline",
+    "infrastructure", "container", "kubernetes", "docker",
+    "terraform", "health check", "probe",
+]
+
+DOCUMENTATION_TERMS = [
+    "readme", "changelog", "api documentation", "api doc",
+    "runbook", "adr", "architecture decision",
+    "documentation", "docs",
 ]
 
 VALID_CATEGORIES = {
@@ -31,6 +51,20 @@ VALID_CATEGORIES = {
     "testing", "devops", "dependencies", "standards", "ux",
     "documentation", "code_quality", "maintainability",
 }
+
+
+def _normalize_text(text):
+    return re.sub(r"[-_\s]+", " ", text).lower().strip()
+
+
+def _any_term_present(text, terms):
+    norm_text = _normalize_text(text)
+    for term in terms:
+        norm_term = _normalize_text(term)
+        pattern = r"\b" + re.escape(norm_term) + r"\b"
+        if re.search(pattern, norm_text):
+            return True
+    return False
 
 
 def load_spec(path):
@@ -46,6 +80,8 @@ def load_spec(path):
 
 
 def create_issue(title, severity, category, description, recommendation, evidence, impact):
+    if severity not in VALID_SEVERITIES:
+        raise ValueError(f"Invalid severity '{severity}'; expected one of {sorted(VALID_SEVERITIES)}")
     if category not in VALID_CATEGORIES:
         raise ValueError(f"Invalid category '{category}'; expected one of {sorted(VALID_CATEGORIES)}")
     return {
@@ -63,7 +99,7 @@ def create_issue(title, severity, category, description, recommendation, evidenc
 def basic_analysis(spec):
     issues = []
 
-    markers = re.findall(r'\b(TODO|FIXME|HACK|XXX)\b', spec, re.IGNORECASE)
+    markers = re.findall(r'\b(TODO|FIXME|HACK)\b', spec, re.IGNORECASE)
     if markers:
         unique = sorted(set(m.upper() for m in markers))
         markers_str = ", ".join(unique)
@@ -72,20 +108,21 @@ def basic_analysis(spec):
             "medium",
             "spec",
             f"Specification contains unresolved markers: {markers_str}.",
-            "Resolve all TODO/FIXME/HACK/XXX markers before implementation.",
+            "Resolve all TODO/FIXME/HACK markers before implementation.",
             f"Found markers in the specification text: {markers_str}.",
             "Open markers usually indicate incomplete requirements or unresolved design decisions.",
         ))
 
-    if len(spec) < 200:
+    stripped = spec.strip()
+    if len(stripped) < 50:
         issues.append(create_issue(
             "Specification too short",
             "high",
             "spec",
             "Specification lacks enough detail for a reliable engineering review.",
             "Expand the specification with functional, technical, and operational details.",
-            f"Specification length is {len(spec)} characters.",
-            "A short specification is likely missing business rules, edge cases, or delivery constraints.",
+            f"Specification is {len(stripped)} characters (excluding leading/trailing whitespace).",
+            "A specification this short is likely missing business rules, edge cases, or delivery constraints.",
         ))
 
     return issues
@@ -93,9 +130,9 @@ def basic_analysis(spec):
 
 def detect_testing_gaps(spec):
     gaps = []
-    spec_lower = spec.lower()
+    norm_spec = _normalize_text(spec)
 
-    if not re.search(r'\btest(?:s|ing|ed|able)?\b', spec_lower):
+    if not re.search(r'\btest(?:s|ing|ed|able|er)?\b', norm_spec):
         gaps.append(create_issue(
             "No testing strategy defined",
             "high",
@@ -106,14 +143,14 @@ def detect_testing_gaps(spec):
             "Missing test guidance makes implementation quality and release safety hard to evaluate.",
         ))
 
-    if re.search(r'\be2e\b', spec_lower) and not re.search(r'\bunit\b', spec_lower):
+    if re.search(r'\be2e\b', norm_spec) and not re.search(r'\bunit[\s_-]?test(?:s|ing|ed|able|er)?\b', norm_spec):
         gaps.append(create_issue(
             "Imbalanced test strategy",
             "medium",
             "testing",
             "Specification mentions E2E tests without describing unit-test coverage.",
             "Follow a test-pyramid approach and define unit coverage for critical logic.",
-            'Found "e2e" in the specification text but no occurrence of "unit".',
+            'Found "e2e" in the specification text but no occurrence of "unit test".',
             "Over-reliance on E2E tests usually slows feedback and leaves core logic under-specified.",
         ))
 
@@ -122,9 +159,8 @@ def detect_testing_gaps(spec):
 
 def detect_security_gaps(spec):
     gaps = []
-    spec_lower = spec.lower()
 
-    if not any(term in spec_lower for term in SECURITY_TERMS):
+    if not _any_term_present(spec, SECURITY_TERMS):
         gaps.append(create_issue(
             "No security considerations mentioned",
             "high",
@@ -140,9 +176,8 @@ def detect_security_gaps(spec):
 
 def detect_performance_gaps(spec):
     gaps = []
-    spec_lower = spec.lower()
 
-    if not any(term in spec_lower for term in PERFORMANCE_TERMS):
+    if not _any_term_present(spec, PERFORMANCE_TERMS):
         gaps.append(create_issue(
             "No performance requirements mentioned",
             "medium",
@@ -151,6 +186,40 @@ def detect_performance_gaps(spec):
             "Define performance targets, SLOs, or acceptance criteria for latency-sensitive operations.",
             "No performance-related terms were found in the specification text.",
             "Missing performance guidance may lead to designs that do not meet user or operational expectations.",
+        ))
+
+    return gaps
+
+
+def detect_devops_gaps(spec):
+    gaps = []
+
+    if not _any_term_present(spec, DEVOPS_TERMS):
+        gaps.append(create_issue(
+            "No DevOps or deployment strategy mentioned",
+            "medium",
+            "devops",
+            "Specification does not mention CI/CD, deployment, monitoring, or observability.",
+            "Define deployment strategy, CI pipeline, rollback plan, and operational monitoring approach.",
+            "No DevOps-related terms were found in the specification text.",
+            "Missing DevOps guidance may lead to unreliable deployments and poor operational visibility.",
+        ))
+
+    return gaps
+
+
+def detect_documentation_gaps(spec):
+    gaps = []
+
+    if not _any_term_present(spec, DOCUMENTATION_TERMS):
+        gaps.append(create_issue(
+            "No documentation plan mentioned",
+            "low",
+            "documentation",
+            "Specification does not mention documentation, README, changelog, or runbook expectations.",
+            "Define documentation requirements: README, API docs, changelog, runbooks, and ADRs.",
+            "No documentation-related terms were found in the specification text.",
+            "Missing documentation expectations can lead to operational confusion and slower onboarding.",
         ))
 
     return gaps
@@ -219,6 +288,8 @@ def main():
         + detect_testing_gaps(spec)
         + detect_security_gaps(spec)
         + detect_performance_gaps(spec)
+        + detect_devops_gaps(spec)
+        + detect_documentation_gaps(spec)
     )
 
     result = {
